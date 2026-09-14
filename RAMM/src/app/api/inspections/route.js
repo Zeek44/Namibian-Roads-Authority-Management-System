@@ -27,7 +27,8 @@ export async function GET(request) {
         i.inspection_type, i.status, i.approval_date, i.rejection_reason,
         i.created_at, i.updated_at,
         i.longitude, i.latitude,
-        a.asset_id, a.name as asset_name, a.address as asset_address,
+        a.id as asset_uuid, a.asset_id, a.name as asset_name, a.address as asset_address,
+        a.longitude as asset_longitude, a.latitude as asset_latitude,
         at.name as asset_type_name, at.icon as asset_icon, at.color as asset_color,
         u1.name as inspector_name, u1.email as inspector_email,
         u2.name as approved_by_name

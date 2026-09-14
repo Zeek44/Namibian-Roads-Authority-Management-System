@@ -1,6 +1,6 @@
 import { readdir, stat } from 'node:fs/promises';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join, relative } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Hono } from 'hono';
 import type { Handler } from 'hono/types';
 import updatedFetch from '../src/__create/fetch';
@@ -44,7 +44,7 @@ async function findRouteFiles(dir: string): Promise<string[]> {
 
 // Helper function to transform file path to Hono route path
 function getHonoPath(routeFile: string): { name: string; pattern: string }[] {
-  const relativePath = routeFile.replace(__dirname, '');
+  const relativePath = `/${relative(__dirname, routeFile).replace(/\\/g, '/')}`;
   const parts = relativePath.split('/').filter(Boolean);
   const routeParts = parts.slice(0, -1); // Remove 'route.js'
   if (routeParts.length === 0) {
@@ -61,6 +61,11 @@ function getHonoPath(routeFile: string): { name: string; pattern: string }[] {
     return { name: segment, pattern: segment };
   });
   return transformedParts;
+}
+
+function getRouteImportUrl(routeFile: string, update = false): string {
+  const url = pathToFileURL(routeFile).href;
+  return update ? `${url}?update=${Date.now()}` : url;
 }
 
 // Import and register all routes
@@ -81,7 +86,7 @@ async function registerRoutes() {
 
   for (const routeFile of routeFiles) {
     try {
-      const route = await import(/* @vite-ignore */ `${routeFile}?update=${Date.now()}`);
+      const route = await import(/* @vite-ignore */ getRouteImportUrl(routeFile, true));
 
       const methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
       for (const method of methods) {
@@ -93,7 +98,7 @@ async function registerRoutes() {
               const params = c.req.param();
               if (import.meta.env.DEV) {
                 const updatedRoute = await import(
-                  /* @vite-ignore */ `${routeFile}?update=${Date.now()}`
+                  /* @vite-ignore */ getRouteImportUrl(routeFile, true)
                 );
                 return await updatedRoute[method](c.req.raw, { params });
               }

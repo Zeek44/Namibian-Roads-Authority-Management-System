@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { 
   Search, 
   Filter, 
@@ -197,11 +197,25 @@ function EmptyAssetsState({ searchTerm, hasFilters }) {
   );
 }
 
-export default function AssetsList({ selectedAsset, onAssetSelect }) {
+export default function AssetsList({ selectedAsset, onAssetSelect, onNavigate = () => {} }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("");
   const [filterCondition, setFilterCondition] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [assetForm, setAssetForm] = useState({
+    asset_id: "",
+    name: "",
+    asset_type_id: "",
+    address: "",
+    longitude: "17.0836",
+    latitude: "-22.5609",
+    condition_rating: "3",
+    description: "",
+  });
+  const queryClient = useQueryClient();
 
   // Fetch assets data
   const { data: assets = [], isLoading, error } = useQuery({
@@ -247,18 +261,44 @@ export default function AssetsList({ selectedAsset, onAssetSelect }) {
   };
 
   const handleInspect = (asset) => {
-    console.log('Create inspection for asset:', asset.asset_id);
-    // Navigate to inspection form
+    onNavigate('inspections');
   };
 
   const handleCreateWorkOrder = (asset) => {
-    console.log('Create work order for asset:', asset.asset_id);
-    // Navigate to work order form
+    onNavigate('work-orders');
   };
 
   const handleAddAsset = () => {
-    console.log('Add new asset');
-    // Navigate to asset form
+    setFormError("");
+    setShowAddForm(true);
+  };
+
+  const handleSaveAsset = async (event) => {
+    event.preventDefault();
+    setIsSaving(true);
+    setFormError("");
+    try {
+      const response = await fetch('/api/assets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...assetForm,
+          longitude: Number(assetForm.longitude),
+          latitude: Number(assetForm.latitude),
+          condition_rating: Number(assetForm.condition_rating),
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to create asset');
+      await queryClient.invalidateQueries({ queryKey: ['assets'] });
+      await queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      setShowAddForm(false);
+      setAssetForm({ asset_id: "", name: "", asset_type_id: "", address: "", longitude: "17.0836", latitude: "-22.5609", condition_rating: "3", description: "" });
+    } catch (error) {
+      setFormError(error.message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const hasFilters = filterType || filterCondition || filterStatus;
@@ -388,6 +428,44 @@ export default function AssetsList({ selectedAsset, onAssetSelect }) {
           </div>
         )}
       </div>
+      {showAddForm && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/40 p-4" onClick={() => setShowAddForm(false)}>
+          <form className="w-full max-w-xl rounded-xl bg-white p-6 shadow-xl dark:bg-[#1E1E1E]" onSubmit={handleSaveAsset} onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Add New Asset</h2>
+              <button type="button" onClick={() => setShowAddForm(false)} className="text-sm text-gray-500">Close</button>
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {[
+                ['asset_id', 'Asset ID', 'RD-NEW-001'],
+                ['name', 'Asset name', 'New road asset'],
+                ['address', 'Address', 'Windhoek'],
+                ['description', 'Description', 'Asset description'],
+                ['longitude', 'Longitude', '17.0836'],
+                ['latitude', 'Latitude', '-22.5609'],
+              ].map(([field, label, placeholder]) => (
+                <label key={field} className="text-sm text-gray-600 dark:text-gray-300">
+                  {label}
+                  <input required={['asset_id', 'name', 'address', 'longitude', 'latitude'].includes(field)} value={assetForm[field]} placeholder={placeholder} onChange={(event) => setAssetForm({ ...assetForm, [field]: event.target.value })} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-[#2A2A2A]" />
+                </label>
+              ))}
+              <label className="text-sm text-gray-600 dark:text-gray-300">Asset type
+                <select required value={assetForm.asset_type_id} onChange={(event) => setAssetForm({ ...assetForm, asset_type_id: event.target.value })} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-[#2A2A2A]">
+                  <option value="">Select type</option>
+                  {assetTypes.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}
+                </select>
+              </label>
+              <label className="text-sm text-gray-600 dark:text-gray-300">Condition rating
+                <select value={assetForm.condition_rating} onChange={(event) => setAssetForm({ ...assetForm, condition_rating: event.target.value })} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-[#2A2A2A]">
+                  {[1, 2, 3, 4, 5].map((rating) => <option key={rating} value={rating}>{rating}/5</option>)}
+                </select>
+              </label>
+            </div>
+            {formError && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</p>}
+            <button type="submit" disabled={isSaving} className="mt-5 w-full rounded-lg bg-[#0066FF] px-4 py-3 text-sm font-medium text-white disabled:opacity-50">{isSaving ? 'Saving...' : 'Save Asset'}</button>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

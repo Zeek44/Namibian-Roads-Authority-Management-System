@@ -196,6 +196,16 @@ if (process.env.AUTH_SECRET) {
                 emailVerified: null,
                 email,
               });
+              const existingProfile = await pool.query(
+                'SELECT id FROM users WHERE email = $1',
+                [email]
+              );
+              if (existingProfile.rowCount === 0) {
+                await pool.query(
+                  'INSERT INTO users (id, name, email, role) VALUES ($1, $2, $3, $4)',
+                  [newUser.id, name || email, email, 'inspector']
+                );
+              }
               await adapter.linkAccount({
                 extraData: {
                   password: await hash(password),

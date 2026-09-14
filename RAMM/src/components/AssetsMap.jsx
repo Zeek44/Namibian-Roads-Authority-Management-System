@@ -2,7 +2,14 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Circle,
+  useMap,
+} from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
@@ -54,6 +61,13 @@ function createMarkerIcon(color, isSelected) {
   });
 }
 
+const userLocationIcon = L.divIcon({
+  html: '<div style="width:16px;height:16px;border:3px solid white;border-radius:50%;background:#2563EB;box-shadow:0 0 0 5px rgba(37,99,235,.25),0 2px 6px rgba(0,0,0,.35)"></div>',
+  className: "",
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+});
+
 // Component to fly map to a position
 function FlyToAsset({ asset }) {
   const map = useMap();
@@ -65,11 +79,40 @@ function FlyToAsset({ asset }) {
   return null;
 }
 
+function UserLocationMarker({ location }) {
+  const map = useMap();
+  const hasCentered = useRef(false);
+
+  useEffect(() => {
+    if (location && !hasCentered.current) {
+      map.flyTo([location.latitude, location.longitude], 14, { duration: 1 });
+      hasCentered.current = true;
+    }
+  }, [location, map]);
+
+  if (!location) return null;
+
+  return (
+    <>
+      <Circle
+        center={[location.latitude, location.longitude]}
+        radius={location.accuracy}
+        pathOptions={{ color: "#2563EB", fillColor: "#60A5FA", fillOpacity: 0.16, weight: 1 }}
+      />
+      <Marker position={[location.latitude, location.longitude]} icon={userLocationIcon}>
+        <Popup>Your live location</Popup>
+      </Marker>
+    </>
+  );
+}
+
 export default function AssetsMap({ selectedAsset, onAssetSelect }) {
   const [selectedMapAsset, setSelectedMapAsset] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("");
   const [filterCondition, setFilterCondition] = useState("");
+  const [userLocation, setUserLocation] = useState(null);
+  const [locationError, setLocationError] = useState("");
 
   // Fetch assets data
   const {
@@ -131,6 +174,34 @@ export default function AssetsMap({ selectedAsset, onAssetSelect }) {
     if (rating === 1) return "Poor";
     return "Unknown";
   };
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocationError("Live location is not supported by this browser.");
+      return undefined;
+    }
+
+    const watchId = navigator.geolocation.watchPosition(
+      ({ coords }) => {
+        setLocationError("");
+        setUserLocation({
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          accuracy: Math.max(coords.accuracy || 0, 10),
+        });
+      },
+      (error) => {
+        setLocationError(
+          error.code === error.PERMISSION_DENIED
+            ? "Allow location access to show your live position."
+            : "Unable to read your live location right now.",
+        );
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, []);
 
   if (error) {
     return (
@@ -203,6 +274,9 @@ export default function AssetsMap({ selectedAsset, onAssetSelect }) {
         <div className="mt-3 text-sm text-[#6B7280] dark:text-[#9CA3AF] font-inter">
           Showing {filteredAssets.length} assets
           {searchTerm && ` matching "${searchTerm}"`}
+          <span className="ml-3 text-[#2563EB] dark:text-[#60A5FA]">
+            {userLocation ? "Live location active" : locationError}
+          </span>
         </div>
       </div>
 
@@ -220,6 +294,7 @@ export default function AssetsMap({ selectedAsset, onAssetSelect }) {
           />
 
           {selectedAsset && <FlyToAsset asset={selectedAsset} />}
+          <UserLocationMarker location={userLocation} />
 
           {/* Asset markers */}
           {filteredAssets.map((asset) => (

@@ -57,12 +57,13 @@ export default function HomePage() {
           <AssetsList 
             selectedAsset={selectedAsset}
             onAssetSelect={setSelectedAsset}
+            onNavigate={setActiveView}
           />
         );
       case "inspections":
-        return <InspectionsList />;
+        return <InspectionsList onNavigate={setActiveView} onAssetSelect={setSelectedAsset} />;
       case "work-orders":
-        return <WorkOrdersList />;
+        return <WorkOrdersList onNavigate={setActiveView} onAssetSelect={setSelectedAsset} />;
       default:
         return <RAMMSDashboard onNavigate={setActiveView} />;
     }

@@ -116,7 +116,7 @@ function WorkOrderCard({ workOrder, onSelect, onApprove, onView, isSelected }) {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              console.log('More options for work order:', workOrder.work_order_id);
+              onSelect(workOrder);
             }}
             className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors duration-150"
           >
@@ -193,12 +193,13 @@ function WorkOrderCard({ workOrder, onSelect, onApprove, onView, isSelected }) {
   );
 }
 
-export default function WorkOrdersList() {
+export default function WorkOrdersList({ onNavigate = () => {}, onAssetSelect = () => {} }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterPriority, setFilterPriority] = useState("");
   const [filterWorkType, setFilterWorkType] = useState("");
   const [selectedWorkOrder, setSelectedWorkOrder] = useState(null);
+  const [notice, setNotice] = useState("");
 
   // Fetch work orders data
   const { data: workOrders = [], isLoading, error } = useQuery({
@@ -227,15 +228,21 @@ export default function WorkOrdersList() {
   );
 
   const handleNewWorkOrder = () => {
-    console.log('Create new work order');
+    setNotice('Choose an asset from the Assets page to start a new work order.');
   };
 
   const handleApprove = (workOrder) => {
-    console.log('Approve work order:', workOrder.work_order_id);
+    setNotice(`Approval for ${workOrder.work_order_id} requires an administrator account.`);
   };
 
   const handleView = (workOrder) => {
-    console.log('View work order:', workOrder.work_order_id);
+    onAssetSelect({
+      id: workOrder.asset_uuid,
+      name: workOrder.asset_name,
+      latitude: workOrder.asset_latitude,
+      longitude: workOrder.asset_longitude,
+    });
+    onNavigate('map');
   };
 
   if (error) {
@@ -325,6 +332,14 @@ export default function WorkOrdersList() {
         <div className="mt-4 text-sm text-[#6B7280] dark:text-[#9CA3AF] font-inter">
           {isLoading ? 'Loading...' : `${filteredWorkOrders.length} work orders found`}
         </div>
+        {notice && (
+          <button
+            onClick={() => setNotice("")}
+            className="mt-3 w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-left text-sm text-blue-700"
+          >
+            {notice}
+          </button>
+        )}
       </div>
 
       {/* Work Orders Grid */}
@@ -371,6 +386,26 @@ export default function WorkOrdersList() {
           </div>
         )}
       </div>
+      {selectedWorkOrder && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/40 p-4" onClick={() => setSelectedWorkOrder(null)}>
+          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl dark:bg-[#1E1E1E]" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{selectedWorkOrder.work_order_id}</h2>
+                <p className="text-sm text-gray-500">{selectedWorkOrder.title}</p>
+              </div>
+              <button onClick={() => setSelectedWorkOrder(null)} className="text-sm text-gray-500">Close</button>
+            </div>
+            <div className="mt-5 space-y-3 text-sm text-gray-600 dark:text-gray-300">
+              <p><strong>Status:</strong> {selectedWorkOrder.status}</p>
+              <p><strong>Priority:</strong> {selectedWorkOrder.priority}</p>
+              <p><strong>Asset:</strong> {selectedWorkOrder.asset_name}</p>
+              <p><strong>Description:</strong> {selectedWorkOrder.description || 'No description recorded.'}</p>
+              <p><strong>Estimated cost:</strong> NAD {Number(selectedWorkOrder.estimated_cost || 0).toLocaleString()}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

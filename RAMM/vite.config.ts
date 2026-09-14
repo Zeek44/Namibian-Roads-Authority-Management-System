@@ -40,7 +40,7 @@ export default defineConfig({
       runtime: 'node',
     }),
     babel({
-      include: ['src/**/*.{js,jsx,ts,tsx}'], // or RegExp: /src\/.*\.[tj]sx?$/
+      include: ['src/**/*.{js,jsx}'],
       exclude: /node_modules/, // skip everything else
       babelConfig: {
         babelrc: false, // don’t merge other Babel files

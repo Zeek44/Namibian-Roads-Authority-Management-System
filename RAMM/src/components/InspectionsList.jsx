@@ -90,7 +90,7 @@ function InspectionCard({ inspection, onSelect, onApprove, onView, isSelected })
           <button
             onClick={(e) => {
               e.stopPropagation();
-              console.log('More options for inspection:', inspection.inspection_id);
+              onSelect(inspection);
             }}
             className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors duration-150"
           >
@@ -157,11 +157,12 @@ function InspectionCard({ inspection, onSelect, onApprove, onView, isSelected })
   );
 }
 
-export default function InspectionsList() {
+export default function InspectionsList({ onNavigate = () => {}, onAssetSelect = () => {} }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterType, setFilterType] = useState("");
   const [selectedInspection, setSelectedInspection] = useState(null);
+  const [notice, setNotice] = useState("");
 
   // Fetch inspections data
   const { data: inspections = [], isLoading, error } = useQuery({
@@ -188,15 +189,21 @@ export default function InspectionsList() {
   );
 
   const handleNewInspection = () => {
-    console.log('Create new inspection');
+    setNotice('Choose an asset from the Assets page to start a new inspection.');
   };
 
   const handleApprove = (inspection) => {
-    console.log('Approve inspection:', inspection.inspection_id);
+    setNotice(`Approval for ${inspection.inspection_id} requires an administrator account.`);
   };
 
   const handleView = (inspection) => {
-    console.log('View inspection:', inspection.inspection_id);
+    onAssetSelect({
+      id: inspection.asset_uuid,
+      name: inspection.asset_name,
+      latitude: inspection.asset_latitude,
+      longitude: inspection.asset_longitude,
+    });
+    onNavigate('map');
   };
 
   if (error) {
@@ -270,6 +277,14 @@ export default function InspectionsList() {
         <div className="mt-4 text-sm text-[#6B7280] dark:text-[#9CA3AF] font-inter">
           {isLoading ? 'Loading...' : `${filteredInspections.length} inspections found`}
         </div>
+        {notice && (
+          <button
+            onClick={() => setNotice("")}
+            className="mt-3 w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-left text-sm text-blue-700"
+          >
+            {notice}
+          </button>
+        )}
       </div>
 
       {/* Inspections Grid */}
@@ -316,6 +331,26 @@ export default function InspectionsList() {
           </div>
         )}
       </div>
+      {selectedInspection && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/40 p-4" onClick={() => setSelectedInspection(null)}>
+          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl dark:bg-[#1E1E1E]" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{selectedInspection.inspection_id}</h2>
+                <p className="text-sm text-gray-500">{selectedInspection.asset_name}</p>
+              </div>
+              <button onClick={() => setSelectedInspection(null)} className="text-sm text-gray-500">Close</button>
+            </div>
+            <div className="mt-5 space-y-3 text-sm text-gray-600 dark:text-gray-300">
+              <p><strong>Status:</strong> {selectedInspection.status}</p>
+              <p><strong>Condition:</strong> {selectedInspection.condition_rating}/5</p>
+              <p><strong>Inspector:</strong> {selectedInspection.inspector_name}</p>
+              <p><strong>Findings:</strong> {selectedInspection.findings || 'No findings recorded.'}</p>
+              <p><strong>Recommendations:</strong> {selectedInspection.recommendations || 'No recommendations recorded.'}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

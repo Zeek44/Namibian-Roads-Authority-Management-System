@@ -87,7 +87,7 @@ export async function POST(request) {
     } = body;
 
     // Validate required fields
-    if (!asset_id || !name || !asset_type_id || !longitude || !latitude) {
+    if (!asset_id || !name || !asset_type_id || longitude === undefined || latitude === undefined) {
       return Response.json(
         { error: 'Missing required fields: asset_id, name, asset_type_id, longitude, latitude' },
         { status: 400 }

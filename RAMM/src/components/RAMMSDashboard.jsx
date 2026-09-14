@@ -227,7 +227,10 @@ export default function RAMMSDashboard({ onNavigate = () => {} }) {
                 </div>
               </div>
             </div>
-            <button className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors duration-150 font-inter font-medium">
+            <button
+              onClick={() => onNavigate('inspections')}
+              className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors duration-150 font-inter font-medium"
+            >
               Review Queue
             </button>
           </div>
@@ -291,7 +294,10 @@ export default function RAMMSDashboard({ onNavigate = () => {} }) {
               <h3 className="text-lg font-semibold text-[#111827] dark:text-[#DEDEDE] font-inter">
                 Recent Activity
               </h3>
-              <button className="text-[#0066FF] dark:text-[#4A90E2] hover:underline text-sm font-inter">
+              <button
+                onClick={() => onNavigate('inspections')}
+                className="text-[#0066FF] dark:text-[#4A90E2] hover:underline text-sm font-inter"
+              >
                 View All
               </button>
             </div>
